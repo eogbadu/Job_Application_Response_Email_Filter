@@ -7,8 +7,6 @@ JOB_RESPONSE_KEYWORDS = [
     "application received",
     "we received your application",
     "we have received your application",
-    "position",
-    "role",
     "job application",
     "resume",
     "recruiter",
@@ -22,9 +20,10 @@ JOB_RESPONSE_KEYWORDS = [
     "not selected",
     "decided to move forward",
     "move forward with other candidates",
-    "offer",
-    "congratulations",
 ]
+
+# Removed: "position", "role", "offer", "congratulations" — too generic, caused
+# false positives on utility bills, school emails, and marketing messages.
 
 JOB_SENDER_KEYWORDS = [
     "greenhouse",
@@ -38,9 +37,10 @@ JOB_SENDER_KEYWORDS = [
     "recruiting",
     "careers",
     "talent",
-    "noreply",
-    "no-reply",
 ]
+
+# Removed: "noreply", "no-reply" — appear on virtually every marketing email,
+# not specific enough to signal a job-related sender.
 
 
 @dataclass(frozen=True)

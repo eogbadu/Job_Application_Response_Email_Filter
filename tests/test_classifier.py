@@ -36,11 +36,10 @@ def test_sender_keyword_plus_one_body_keyword_is_matched():
     result = classify(
         sender="recruiting@acme.com",
         subject="Update from Acme",
-        body="Thank you for your interest in the role at our company.",
+        body="We'd like to schedule an interview with you for this opportunity.",
     )
     assert result.matched is True
-    # Should match: sender has 'recruiting', body has 'role'
-    assert "recruiting" in result.reason or "role" in result.reason
+    assert "recruiting" in result.reason or "interview" in result.reason
 
 
 def test_one_weak_keyword_without_sender_keyword_is_skipped():
