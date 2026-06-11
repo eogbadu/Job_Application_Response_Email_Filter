@@ -87,6 +87,18 @@ Both Gmail and Yahoo require an **app password** — your regular account passwo
 
 ---
 
+## Before every session
+
+Activate the virtual environment each time you open a new terminal:
+
+```bash
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+```
+
+You'll see `(.venv)` in your prompt when it's active. All `python` commands below assume the venv is active.
+
+---
+
 ## Running in dry-run mode (safe default)
 
 Dry run prints what the tool would do without moving any emails.
@@ -153,7 +165,36 @@ python -m app.main --watch 15   # scan every 15 minutes
 
 Each cycle fetches new unread messages, skips already-processed UIDs, and prints a summary. Press **Ctrl+C** to stop.
 
-For persistent background scheduling (runs even when the terminal is closed), add a cron entry:
+### Run in the background (terminal can be closed)
+
+```bash
+nohup python -m app.main --watch 15 >> sorter.log 2>&1 &
+```
+
+Check the live output at any time:
+
+```bash
+tail -f sorter.log
+```
+
+### Stop a background process
+
+Find the process ID and kill it:
+
+```bash
+pkill -f "app.main"
+```
+
+Or if you need the PID first:
+
+```bash
+pgrep -f "app.main"   # prints the PID
+kill <PID>
+```
+
+### Run on a cron schedule (survives reboots)
+
+For persistent scheduling that starts automatically after a reboot, add a cron entry instead:
 
 ```bash
 crontab -e
