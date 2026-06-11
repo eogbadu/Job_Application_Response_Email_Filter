@@ -9,11 +9,15 @@ A local Python tool that connects to your Gmail or Yahoo Mail inbox via IMAP, de
 ## What it does
 
 1. Connects to your inbox securely over IMAP SSL.
-2. Scans unread messages for job-application signals (keywords in subject/body and ATS sender addresses).
-3. Classifies each email and prints `[MATCH]`, `[SKIP]`, or `[ERROR]`.
-4. In dry-run mode: only prints what *would* happen — no emails are moved.
-5. In live mode: moves matched emails to your configured target folder.
-6. Tracks processed UIDs locally so emails are never classified twice.
+2. Scans unread messages for job-application signals — keywords in subject/body and ATS sender addresses.
+3. Flags emails from companies you've applied to, even if they don't hit the keyword threshold.
+4. Suppresses known false-positive senders via a blocklist.
+5. Classifies each email and prints `[MATCH]`, `[SKIP]`, `[BLOCK]`, or `[ERROR]`.
+6. In dry-run mode: only prints what *would* happen — no emails are moved.
+7. In live mode: moves matched emails to your configured target folder.
+8. Tracks processed UIDs locally so emails are never classified twice.
+9. Prints a summary at the end of every run.
+10. Optionally runs on a schedule with `--watch`.
 
 ---
 
@@ -53,6 +57,8 @@ EMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
 TARGET_FOLDER=Job Applications/Responses
 DRY_RUN=true
 MAX_MESSAGES=50
+APPLIED_JOBS_FILE=applied_jobs.xlsx
+SENDER_BLOCKLIST_FILE=sender_blocklist.txt
 ```
 
 **Never commit `.env`.** It is already in `.gitignore`.
@@ -92,10 +98,13 @@ python -m app.main
 `DRY_RUN=true` is the default. Output looks like:
 
 ```
-Provider: yahoo
-Email: you@yahoo.com
-Target folder: Job Applications/Responses
-Dry run: True
+Provider:        yahoo
+Email:           you@yahoo.com
+Target folder:   Job Applications/Responses
+Dry run:         True
+Applied jobs:    applied_jobs.xlsx (3 companies)
+Sender blocklist:sender_blocklist.txt (5 entries)
+
 Found 8 unread message(s).
 
 [MATCH] Software Engineer Application Update | careers@example.com
@@ -104,6 +113,12 @@ Action: would move to Job Applications/Responses
 
 [SKIP] Weekly Newsletter | newsletter@example.com
 Reason: no matching job-response rules
+
+[BLOCK] See John's connections | LinkedIn <invitations@linkedin.com>
+
+──────────────────────────────────────────────────
+Summary  matched=1  skipped=6  blocked=1  errors=0  already-processed=0
+──────────────────────────────────────────────────
 ```
 
 ---
@@ -128,13 +143,74 @@ Matched emails will be moved to `TARGET_FOLDER`. The folder is created automatic
 
 ---
 
+## Watch mode (automatic scheduling)
+
+Run the tool on a repeating schedule without setting up a cron job:
+
+```bash
+python -m app.main --watch 15   # scan every 15 minutes
+```
+
+Each cycle fetches new unread messages, skips already-processed UIDs, and prints a summary. Press **Ctrl+C** to stop.
+
+For persistent background scheduling (runs even when the terminal is closed), add a cron entry:
+
+```bash
+crontab -e
+```
+
+```cron
+*/15 * * * * cd /path/to/job-email-sorter && .venv/bin/python -m app.main >> sorter.log 2>&1
+```
+
+---
+
+## Tracking jobs you've applied to
+
+Open `applied_jobs.xlsx` (auto-created on first run) and add one row per application:
+
+| Company | Job Title | Date Applied | Notes |
+|---|---|---|---|
+| Anduril Industries | ML Engineer | 2026-06-01 | |
+| Stripe | Backend Engineer | 2026-06-05 | |
+
+**How it works:** The company name is matched against the sender address and email subject. A match flags the email even if no job keywords are present — because any email from a company you applied to is worth reviewing. Both full-name and significant-word matching are used, so `Anduril Industries` will catch `hiring@anduril.com`.
+
+---
+
+## Blocking false-positive senders
+
+`sender_blocklist.txt` is auto-created with sensible defaults (LinkedIn notification addresses, etc.). Any sender pattern in the file is skipped before keyword matching runs.
+
+### Add from the command line
+
+```bash
+python -m app.main --block "noreply@newsletter.example.com"
+```
+
+The entry is appended to `sender_blocklist.txt` immediately.
+
+### Edit the file directly
+
+Open `sender_blocklist.txt` in any text editor. Each line is a substring matched against the full `From:` address. Lines starting with `#` are comments.
+
+```text
+# Block this newsletter — triggers on article body keywords
+hi@newsletter.doubleblindmag.com
+
+# Block all mail from this domain
+@spammydomain.com
+```
+
+---
+
 ## Running tests
 
 ```bash
 pytest
 ```
 
-All tests are in `tests/test_classifier.py` and test the rule-based classifier with no network access.
+All 12 tests are in `tests/test_classifier.py` and exercise the classifier with no network access.
 
 ---
 
@@ -142,7 +218,7 @@ All tests are in `tests/test_classifier.py` and test the rule-based classifier w
 
 - `.env` and `processed_messages.json` are gitignored and never committed.
 - App passwords are never printed to the terminal.
-- Emails are only deleted from the inbox after a successful copy to the target folder (copy → mark deleted → expunge). If the copy fails, the original is preserved.
+- Emails are only deleted from the inbox after a successful copy to the target folder. If the copy fails, the original is preserved.
 - `DRY_RUN=true` is the default — nothing moves unless you explicitly set it to `false`.
 
 ---
@@ -169,7 +245,7 @@ pip install -r requirements.txt
 
 ### Target folder not being created
 
-- Some providers require the folder path to use a different separator. Try adjusting `TARGET_FOLDER` in `.env` (e.g., use `Job_Applications` without spaces if your provider requires it).
+- Some providers require the folder path to use a different separator. Try adjusting `TARGET_FOLDER` in `.env` (e.g. use `Job_Applications` without spaces if your provider requires it).
 
 ---
 
@@ -179,14 +255,18 @@ pip install -r requirements.txt
 job-email-sorter/
   app/
     __init__.py
-    main.py          # CLI entry point
+    main.py          # CLI entry point (--block, --watch, summary)
     config.py        # Loads .env into typed Config
     classifier.py    # Rule-based keyword classifier
     imap_client.py   # IMAP connection, fetch, move
     storage.py       # Tracks processed UIDs in JSON
+    applied_jobs.py  # Loads applied-company list from Excel
+    blocklist.py     # Loads/updates sender_blocklist.txt
   tests/
     __init__.py
     test_classifier.py
+  applied_jobs.xlsx      # Fill in companies you've applied to
+  sender_blocklist.txt   # Senders to always skip
   .env.example
   .gitignore
   requirements.txt
