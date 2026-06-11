@@ -95,6 +95,18 @@ def test_applied_company_partial_word_match():
     assert "stripe" in result.reason.lower()
 
 
+def test_linkedin_invitation_with_recruiter_bio_is_blocked():
+    # LinkedIn invitations show the invitee's job title in the body, which can
+    # contain "recruiter" or "talent acquisition" — should always be skipped.
+    result = classify(
+        sender="LinkedIn <invitations@linkedin.com>",
+        subject="See Mindy's and other people's connections, experience, and more",
+        body="Mindy works as a Talent Acquisition Specialist and recruiter at Acme Corp.",
+    )
+    assert result.matched is False
+    assert "blocklist" in result.reason
+
+
 def test_ats_sender_no_body_keywords_skipped():
     result = classify(
         sender="noreply@greenhouse.io",

@@ -43,6 +43,16 @@ JOB_SENDER_KEYWORDS = [
 # Removed: "noreply", "no-reply" — appear on virtually every marketing email,
 # not specific enough to signal a job-related sender.
 
+# Senders that should never be classified as job responses, even if body keywords
+# match. LinkedIn invitation emails show the invitee's job title in the body,
+# which causes "recruiter" / "talent acquisition" to fire spuriously.
+SENDER_BLOCKLIST = [
+    "invitations@linkedin.com",
+    "jobalerts-noreply@linkedin.com",
+    "newsletters-noreply@linkedin.com",
+    "jobs-noreply@linkedin.com",
+]
+
 
 @dataclass(frozen=True)
 class ClassificationResult:
@@ -58,6 +68,10 @@ def classify(
 ) -> ClassificationResult:
     text = f"{subject} {body}".lower()
     sender_lower = sender.lower()
+
+    # Blocklist check — always skip known non-job senders before anything else.
+    if any(blocked in sender_lower for blocked in SENDER_BLOCKLIST):
+        return ClassificationResult(matched=False, reason="sender is on the blocklist")
 
     # Applied-company check runs first — any email from a known application is flagged.
     if applied_companies:
