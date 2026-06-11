@@ -1,6 +1,12 @@
 import pytest
 from app.classifier import classify
 
+_BLOCKLIST = [
+    "invitations@linkedin.com",
+    "jobalerts-noreply@linkedin.com",
+    "hi@newsletter.doubleblindmag.com",
+]
+
 
 def test_rejection_email_is_matched():
     result = classify(
@@ -96,12 +102,22 @@ def test_applied_company_partial_word_match():
 
 
 def test_linkedin_invitation_with_recruiter_bio_is_blocked():
-    # LinkedIn invitations show the invitee's job title in the body, which can
-    # contain "recruiter" or "talent acquisition" — should always be skipped.
     result = classify(
         sender="LinkedIn <invitations@linkedin.com>",
         subject="See Mindy's and other people's connections, experience, and more",
         body="Mindy works as a Talent Acquisition Specialist and recruiter at Acme Corp.",
+        sender_blocklist=_BLOCKLIST,
+    )
+    assert result.matched is False
+    assert "blocklist" in result.reason
+
+
+def test_doubleblind_newsletter_is_blocked():
+    result = classify(
+        sender="DoubleBlind Mag <hi@newsletter.doubleblindmag.com>",
+        subject="Eight Truths About 5-MeO-DMT",
+        body="Unfortunately this interview covers topics unrelated to your job search.",
+        sender_blocklist=_BLOCKLIST,
     )
     assert result.matched is False
     assert "blocklist" in result.reason

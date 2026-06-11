@@ -19,6 +19,7 @@ class Config:
     max_messages: int
     imap_host: str
     applied_jobs_file: str
+    sender_blocklist_file: str
 
 
 def load_config() -> Config:
@@ -42,6 +43,7 @@ def load_config() -> Config:
     dry_run = os.getenv("DRY_RUN", "true").lower() != "false"
     max_messages = int(os.getenv("MAX_MESSAGES", "50"))
     applied_jobs_file = os.getenv("APPLIED_JOBS_FILE", "applied_jobs.xlsx")
+    sender_blocklist_file = os.getenv("SENDER_BLOCKLIST_FILE", "sender_blocklist.txt")
 
     return Config(
         provider=provider,
@@ -52,4 +54,5 @@ def load_config() -> Config:
         max_messages=max_messages,
         imap_host=IMAP_HOSTS[provider],
         applied_jobs_file=applied_jobs_file,
+        sender_blocklist_file=sender_blocklist_file,
     )
