@@ -3,6 +3,7 @@ from app.config import load_config
 from app.classifier import classify
 from app.imap_client import ImapEmailClient
 from app.storage import load_processed_message_ids, save_processed_message_ids
+from app.applied_jobs import load_applied_companies, create_template
 
 
 def run() -> None:
@@ -13,10 +14,19 @@ def run() -> None:
         print("Copy .env.example to .env and fill in your credentials.")
         sys.exit(1)
 
+    # Create blank template if the file doesn't exist yet
+    from pathlib import Path
+    if not Path(config.applied_jobs_file).exists():
+        create_template(config.applied_jobs_file)
+        print(f"Created blank applied-jobs template: {config.applied_jobs_file}")
+
+    applied_companies = load_applied_companies(config.applied_jobs_file)
+
     print(f"Provider: {config.provider}")
     print(f"Email: {config.email_address}")
     print(f"Target folder: {config.target_folder}")
     print(f"Dry run: {config.dry_run}")
+    print(f"Applied jobs file: {config.applied_jobs_file} ({len(applied_companies)} companies loaded)")
 
     processed_ids = load_processed_message_ids()
 
@@ -46,7 +56,7 @@ def run() -> None:
             if parsed.uid in processed_ids:
                 continue
 
-            result = classify(parsed.sender, parsed.subject, parsed.body)
+            result = classify(parsed.sender, parsed.subject, parsed.body, applied_companies)
 
             if result.matched:
                 print(f"[MATCH] {parsed.subject} | {parsed.sender}")

@@ -61,6 +61,40 @@ def test_two_body_keywords_match_without_sender_keyword():
     assert result.matched is True
 
 
+def test_applied_company_match_overrides_keyword_threshold():
+    # Only 1 body keyword hit — would normally be skipped — but company is in applied list
+    result = classify(
+        sender="hiring@anduril.com",
+        subject="Update on your application",
+        body="We wanted to follow up with you.",
+        applied_companies=["Anduril Industries"],
+    )
+    assert result.matched is True
+    assert "anduril" in result.reason.lower()
+
+
+def test_applied_company_no_match_when_company_absent():
+    result = classify(
+        sender="newsletter@randomco.com",
+        subject="Weekly digest",
+        body="Here are your weekly updates.",
+        applied_companies=["Anduril Industries", "Google"],
+    )
+    assert result.matched is False
+
+
+def test_applied_company_partial_word_match():
+    # "Stripe" appears inside the sender domain
+    result = classify(
+        sender="jobs@stripe.com",
+        subject="Thank you",
+        body="We appreciate your interest.",
+        applied_companies=["Stripe"],
+    )
+    assert result.matched is True
+    assert "stripe" in result.reason.lower()
+
+
 def test_ats_sender_no_body_keywords_skipped():
     result = classify(
         sender="noreply@greenhouse.io",

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from app.applied_jobs import company_matches
 
 JOB_RESPONSE_KEYWORDS = [
     "thank you for applying",
@@ -49,9 +50,23 @@ class ClassificationResult:
     reason: str
 
 
-def classify(sender: str, subject: str, body: str) -> ClassificationResult:
+def classify(
+    sender: str,
+    subject: str,
+    body: str,
+    applied_companies: list[str] | None = None,
+) -> ClassificationResult:
     text = f"{subject} {body}".lower()
     sender_lower = sender.lower()
+
+    # Applied-company check runs first — any email from a known application is flagged.
+    if applied_companies:
+        for company in applied_companies:
+            if company_matches(company, sender_lower, subject):
+                return ClassificationResult(
+                    matched=True,
+                    reason=f"applied company match: '{company}'",
+                )
 
     body_hits = [kw for kw in JOB_RESPONSE_KEYWORDS if kw in text]
     sender_hits = [kw for kw in JOB_SENDER_KEYWORDS if kw in sender_lower]
