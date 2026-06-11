@@ -251,6 +251,19 @@ Reason: no matching job-response rules
 
 Do not print the app password.
 
+Git workflow requirements:
+
+- Check the current git status before starting.
+- If this folder is not already a git repository, initialize git.
+- Create and work on a new branch named feature/job-email-sorter-v1.
+- Make small, regular commits after each meaningful milestone.
+- Use clear commit messages.
+- Do not commit .env, credentials, app passwords, tokens, or processed_messages.json.
+- Ensure .gitignore includes .env, .venv, __pycache__, .pytest_cache, and processed_messages.json.
+- After the project is complete and tests pass, show me the git log and final git status.
+- Do not push to remote unless I explicitly say to push.
+
+
 ## Tests
 
 Create pytest tests for the classifier.
